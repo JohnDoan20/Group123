@@ -1,162 +1,63 @@
-# Python code for Multiple Color Detection
-
-from scipy.spatial import KDTree
-import numpy as np
 import cv2
-from webcolors import rgb_to_name
-from webcolors import (
-    css3_hex_to_names,
-    hex_to_rgb,
-)
-# Capturing video through webcam
-webcam = cv2.VideoCapture(0)
-def convert_rgb_to_name(rgb_tuple):
-    
-    # a dictionary of all the hex and their respective names in css3
-    css3_db = css3_hex_to_names
-    names = []
-    rgb_values = []
-    for color_hex, color_name in css3_db.items():
-        names.append(color_name)
-        rgb_values.append(hex_to_rgb(color_hex))
-    
-    kdt_db = KDTree(rgb_values)
-    distance, index = kdt_db.query(rgb_tuple)
-    return  names[index]
-# Start a while loop
-while(1):
-    
-    # Reading the video from the
-    # webcam in image frames
-    _, imageFrame = webcam.read()
+import cv2 as cv
+import numpy as np
 
-    # Convert the imageFrame in
-    # BGR(RGB color space) to
-    # HSV(hue-saturation-value)
-    # color space
-    hsvFrame = cv2.cvtColor(imageFrame, cv2.COLOR_BGR2HSV)
-    ## mask of red color
-    maskred = cv2.inRange(hsvFrame, (0, 0, 50), (50, 50,255))
-    maskred = int(np.mean(maskred))
-    print('mask red',maskred)
-    maskblue = cv2.inRange(hsvFrame, (50, 0, 0), (250, 50,50))
-    maskblue = int(np.mean(maskblue))
-    print('mask blue',maskblue)
-    maskgreen = cv2.inRange(hsvFrame, (0, 50, 0), (50, 250,50))
-    maskgreen = int(np.mean(maskgreen))
-    print('mask blue',maskgreen)
-    # Set range for red color and
-    # define mask
-    red_lower = np.array([136, 87, 111], np.uint8)
-    red_upper = np.array([180, 255, 255], np.uint8)
-    red_mask = cv2.inRange(hsvFrame, red_lower, red_upper)
+cap = cv2.VideoCapture(0)
 
-    # Set range for green color and
-    # define mask
-    green_lower = np.array([25, 52, 72], np.uint8)
-    green_upper = np.array([102, 255, 255], np.uint8)
-    green_mask = cv2.inRange(hsvFrame, green_lower, green_upper)
+while cap.isOpened():
+    ret, im = cap.read()
+    #cv2.imshow('im',im)
 
-    # Set range for blue color and
-    # define mask
-    blue_lower = np.array([94, 80, 2], np.uint8)
-    blue_upper = np.array([120, 255, 255], np.uint8)
-    blue_mask = cv2.inRange(hsvFrame, blue_lower, blue_upper)
-    
-    
-    
-    
-    # Morphological Transform, Dilation
-    # for each color and bitwise_and operator
-    # between imageFrame and mask determines
-    # to detect only that particular color
-    kernal = np.ones((5, 5), "uint8")
-    
-    # For red color
-    red_mask = cv2.dilate(red_mask, kernal)
-    res_red = cv2.bitwise_and(imageFrame, imageFrame,
-                            mask = red_mask)
-    
-    # For green color
-    green_mask = cv2.dilate(green_mask, kernal)
-    res_green = cv2.bitwise_and(imageFrame, imageFrame,
-                                mask = green_mask)
-    
-    # For blue color
-    blue_mask = cv2.dilate(blue_mask, kernal)
-    res_blue = cv2.bitwise_and(imageFrame, imageFrame,
-                            mask = blue_mask)
+    img = cv2.cvtColor(im,cv2.COLOR_BGR2GRAY)
+    #cv2.imshow('img',img)
 
-    # Creating contour to track red color
-    contours, hierarchy = cv2.findContours(red_mask,
-                                        cv2.RETR_TREE,
-                                        cv2.CHAIN_APPROX_SIMPLE)
-   # setting values for base colors
-    b = hsvFrame[:, :, :1]
-    g = hsvFrame[:, :, 1:2]
-    r = hsvFrame[:, :, 2:]
+    imgb = cv.GaussianBlur(img,(3,3),0)
+    #cv2.imshow('imgb',imgb)
 
-    # computing the mean
-    b_mean = int(np.mean(b))
-    g_mean = int(np.mean(g))
-    r_mean = int(np.mean(r))
-    print('red value :', r_mean)
-    print('green value :', g_mean)
-    print('blue value :', b_mean)
-    named_color = str(convert_rgb_to_name((r_mean,g_mean,b_mean)))
-    print(named_color)
-    cv2.putText(imageFrame, named_color, (110, 110),
-                        cv2.FONT_HERSHEY_SIMPLEX, 1.0,
-                        (r_mean,g_mean,b_mean))
-    #time.sleep(1)
-    for pic, contour in enumerate(contours):
-        area = cv2.contourArea(contour)
-        if(area > 300):
-            x, y, w, h = cv2.boundingRect(contour)
-            imageFrame = cv2.rectangle(imageFrame, (x, y),
-                                    (x + w, y + h),
-                                    (r_mean,g_mean,b_mean), 2)
-            
-            cv2.putText(imageFrame, named_color, (x, y),
-                        cv2.FONT_HERSHEY_SIMPLEX, 1.0,
-                        (r_mean,g_mean,b_mean))    
+    edges = cv.Canny(imgb,10,20)
+    #cv2.imshow('edges',edges)
 
-    # Creating contour to track green color
-    contours, hierarchy = cv2.findContours(green_mask,
-                                        cv2.RETR_TREE,
-                                        cv2.CHAIN_APPROX_SIMPLE)
-    '''    
-    for pic, contour in enumerate(contours):
-        area = cv2.contourArea(contour)
-        if(area > 9000):
-            x, y, w, h = cv2.boundingRect(contour)
-            imageFrame = cv2.rectangle(imageFrame, (x, y),
-                                    (x + w, y + h),
-                                    (0, 255, 0), 2)
-            
-            cv2.putText(imageFrame, "Green Colour", (x, y),
-                        cv2.FONT_HERSHEY_SIMPLEX,
-                        1.0, (0, 255, 0))
+    kernel = np.ones((5,5),np.uint8)
+    kernel2 = np.ones((7,7),np.uint8)
+    closed = cv.morphologyEx(edges, cv.MORPH_CLOSE, kernel)
+    #cv2.imshow('closed',closed)
 
-    # Creating contour to track blue color
-    contours, hierarchy = cv2.findContours(blue_mask,
-                                        cv2.RETR_TREE,
-                                        cv2.CHAIN_APPROX_SIMPLE)
-    for pic, contour in enumerate(contours):
-        area = cv2.contourArea(contour)
-        if(area > 9000):
-            x, y, w, h = cv2.boundingRect(contour)
-            imageFrame = cv2.rectangle(imageFrame, (x, y),
-                                    (x + w, y + h),
-                                    (255, 0, 0), 2)
-            
-            cv2.putText(imageFrame, "Blue Colour", (x, y),
-                        cv2.FONT_HERSHEY_SIMPLEX,
-                        1.0, (255, 0, 0))
-    '''            
-    # Program Termination
-    cv2.imshow("Multiple Color Detection in Real-TIme", imageFrame)
-    if cv2.waitKey(10) & 0xFF == ord('q'):
-        cap.release()
-        cv2.destroyAllWindows()
+    contours, hierarchy = cv2.findContours(closed,
+                        cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
+    selected_cnt = []
+    for cnt in contours:
+        x,y,w,h = cv.boundingRect(cnt)
+        if w > int(0.3*im.shape[1]) and w < int(0.7*im.shape[1]) and w in range(int(0.2*h),int(2.2*h)):
+            area = cv2.contourArea(cnt)
+            hull = cv2.convexHull(cnt)
+            hull_area = cv2.contourArea(hull)
+            solidity = float(area)/hull_area
+            if solidity > 0.7:
+                selected_cnt.append(cnt)
+                #print(solidity,area,hull_area,x,y,w,h,im.shape)    
+        cv2.drawContours(edges,[cnt],0,100,2)
+    #cv2.imshow('edges',edges)
+
+    if len(selected_cnt):
+        if len(selected_cnt) > 1:
+            selected_cnt = sorted(selected_cnt,key=lambda x: cv2.contourArea(x))[0]
+        else:
+            selected_cnt = selected_cnt[0]
+        x,y,w,h = cv.boundingRect(selected_cnt)
+        mask = np.zeros(img.shape,np.uint8)
+        cv2.drawContours(mask,[selected_cnt],-1,255,-1)
+        #cv2.imshow('msk_final',mask)
+        mask = cv.erode(mask, kernel)
+        mean = cv2.mean(im,mask=mask)
+        #print(mean)
+        cv2.rectangle(im,(x,y),(x+w,y+h),(50,255,50),2)
+        rgb_txt = 'B:{},G:{},R:{}'.format(round(mean[0]),round(mean[1]),round(mean[2]))
+        cv2.putText(im,rgb_txt,(x,y-20),1,1.2,(255,50,50),2)
+    cv2.imshow('output',im)
+    key=cv2.waitKey(30)
+    if key == ord('q'):
         break
+cap.release()
+cv2.destroyAllWindows()
+
